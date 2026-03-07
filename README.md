@@ -44,6 +44,13 @@ $ yarn run start:dev
 $ yarn run start:prod
 ```
 
+## View database
+
+```bash
+# Prisma Studio
+$ npx prisma studio
+```
+
 ## Run tests
 
 ```bash
