@@ -41,5 +41,6 @@ model Product {
   price       Int
   categoryId  Int
   category    Category @relation(fields: [categoryId], references: [id])
+  image       String?
   createdAt   DateTime @default(now())
 }
