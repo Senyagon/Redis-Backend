@@ -9,22 +9,41 @@ import { join } from 'path';
 dotenv.config();
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     forbidNonWhitelisted: true,
     transform: true,
   }));
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    prefix: '/uploads/',
+  });
 
   const config = new DocumentBuilder()
     .setTitle('Redis API')
-    .setDescription('E-commerce backend')
+    .setDescription(
+      'E-commerce backend API with authentication, products, categories and image uploads.',
+    )
     .setVersion('1.0')
-    .addBearerAuth()
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'Paste access token here',
+      },
+      'bearer',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+
+  SwaggerModule.setup('api', app, document, {
+    swaggerOptions: {
+      tagsSorter: 'alpha',
+      operationsSorter: 'alpha',
+    },
+  });
 
   await app.listen(process.env.PORT ?? 3000);
 }

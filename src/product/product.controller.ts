@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -9,6 +10,9 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
+  Patch,
+  ParseIntPipe,
+  HttpCode,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -22,10 +26,40 @@ import {
   ApiConsumes,
   ApiBody,
   ApiQuery,
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiParam,
+  ApiCreatedResponse,
+  ApiUnauthorizedResponse,
+  ApiConflictResponse,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { UpdateProductDto } from './dto/update-product.dto';
+import { ProductResponseDto } from './dto/product-response.dto';
+import { PaginatedProductsResponseDto } from './dto/paginated-products-response.dto';
+import { ImageUploadResponseDto } from './dto/image-upload-response.dto';
+
+const productImageInterceptor = FileInterceptor('file', {
+  storage: diskStorage({
+    destination: './uploads',
+    filename: (req, file, cb) => {
+      const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+      cb(null, unique + extname(file.originalname));
+    },
+  }),
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.match(/\/(jpg|jpeg|png|webp)$/)) {
+      return cb(new Error('Only image files are allowed'), false);
+    }
+    cb(null, true);
+  },
+});
 
 @ApiTags('Products')
 @Controller('products')
@@ -46,31 +80,24 @@ export class ProductController {
           format: 'binary',
         },
       },
+      required: ['file'],
     },
   })
+  @ApiCreatedResponse({
+    description: 'Image uploaded successfully.',
+    type: ImageUploadResponseDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiBadRequestResponse({
+    description: 'Invalid file type or file too large.',
+  })
   @Post('upload')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (req, file, cb) => {
-          const unique =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          cb(null, unique + extname(file.originalname));
-        },
-      }),
-      limits: {
-        fileSize: 5 * 1024 * 1024,
-      },
-      fileFilter: (req, file, cb) => {
-        if (!file.mimetype.match(/\/(jpg|jpeg|png|webp)$/)) {
-          return cb(new Error('Only image files are allowed'), false);
-        }
-        cb(null, true);
-      },
-    }),
-  )
+  @UseInterceptors(productImageInterceptor)
   uploadFile(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('Image file is required');
+    }
+
     return {
       imageUrl: `/uploads/${file.filename}`,
     };
@@ -80,22 +107,33 @@ export class ProductController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new product' })
-  @ApiResponse({ status: 201, description: 'Product created successfully.' })
-  @ApiResponse({ status: 400, description: 'Validation failed' })
+  @ApiCreatedResponse({
+    description: 'Product created successfully.',
+    type: ProductResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Validation failed or categoryId is invalid.',
+  })
+  @ApiConflictResponse({ description: 'Product slug already exists.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @Post()
   create(
     @Body() dto: CreateProductDto,
-    @GetUser() user: any,
+    @GetUser() user: { id: number; email: string; role: string },
   ) {
-    console.log('Current user:', user);
+    void user;
     return this.productService.create(dto);
   }
 
   // 📦 Get all products (pagination)
   @ApiOperation({ summary: 'Retrieve paginated list of products' })
-  @ApiResponse({ status: 200, description: 'List of products returned.' })
+  @ApiOkResponse({
+    description: 'Paginated list of products returned.',
+    type: PaginatedProductsResponseDto,
+  })
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'limit', required: false, example: 10 })
+  @ApiBadRequestResponse({ description: 'Invalid pagination parameters.' })
   @Get()
   findAll(
     @Query('page') page = 1,
@@ -104,23 +142,148 @@ export class ProductController {
     return this.productService.findAll(Number(page), Number(limit));
   }
 
+  @ApiOperation({ summary: 'Retrieve latest products' })
+  @ApiOkResponse({
+    description: 'Latest products returned.',
+    type: ProductResponseDto,
+    isArray: true,
+  })
+  @ApiQuery({ name: 'limit', required: false, example: 10 })
+  @ApiBadRequestResponse({ description: 'Invalid limit value.' })
+  @Get('latest')
+  findLatest(@Query('limit') limit = 10) {
+    return this.productService.findLatest(Number(limit));
+  }
+
+  @ApiOperation({ summary: 'Get product by slug' })
+  @ApiOkResponse({
+    description: 'Product found by slug.',
+    type: ProductResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid slug value.' })
+  @ApiNotFoundResponse({ description: 'Product not found.' })
+  @ApiParam({ name: 'slug', example: 'tomato-seeds' })
+  @Get('slug/:slug')
+  findBySlug(@Param('slug') slug: string) {
+    return this.productService.findBySlug(slug);
+  }
+
+  @ApiOperation({ summary: 'Get related products from the same category' })
+  @ApiOkResponse({
+    description: 'Related products returned.',
+    type: ProductResponseDto,
+    isArray: true,
+  })
+  @ApiNotFoundResponse({ description: 'Source product not found.' })
+  @ApiParam({ name: 'id', example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 4 })
+  @ApiBadRequestResponse({ description: 'Invalid product id or limit value.' })
+  @Get(':id/related')
+  findRelated(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('limit') limit = 4,
+  ) {
+    return this.productService.findRelated(id, Number(limit));
+  }
+
   // 🔍 Get one product
   @ApiOperation({ summary: 'Get product by ID' })
-  @ApiResponse({ status: 200, description: 'Product found.' })
-  @ApiResponse({ status: 404, description: 'Product not found.' })
+  @ApiOkResponse({ description: 'Product found.', type: ProductResponseDto })
+  @ApiBadRequestResponse({ description: 'Invalid product id.' })
+  @ApiNotFoundResponse({ description: 'Product not found.' })
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.productService.findOne(Number(id));
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.productService.findOne(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update product by ID' })
+  @ApiOkResponse({
+    description: 'Product updated successfully.',
+    type: ProductResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Validation failed, invalid product id, or categoryId is invalid.',
+  })
+  @ApiConflictResponse({ description: 'Product slug already exists.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiNotFoundResponse({ description: 'Product not found.' })
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateProductDto,
+  ) {
+    return this.productService.update(id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload image and attach it to a specific product' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+      required: ['file'],
+    },
+  })
+  @ApiOkResponse({
+    description: 'Product image updated successfully.',
+    type: ProductResponseDto,
+  })
+  @HttpCode(200)
+  @ApiBadRequestResponse({
+    description: 'Invalid file type, file too large, or invalid id.',
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiNotFoundResponse({ description: 'Product not found.' })
+  @Post(':id/image')
+  @UseInterceptors(productImageInterceptor)
+  uploadProductImage(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Image file is required');
+    }
+
+    return this.productService.updateImage(id, `/uploads/${file.filename}`);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Remove image from a specific product' })
+  @ApiOkResponse({
+    description: 'Product image removed successfully.',
+    type: ProductResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid product id.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiNotFoundResponse({ description: 'Product not found.' })
+  @Delete(':id/image')
+  deleteImage(@Param('id', ParseIntPipe) id: number) {
+    return this.productService.deleteImage(id);
   }
 
   // ❌ Delete product
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete product by ID' })
-  @ApiResponse({ status: 200, description: 'Product deleted successfully.' })
-  @ApiResponse({ status: 404, description: 'Product not found.' })
+  @ApiOkResponse({
+    description: 'Product deleted successfully.',
+    type: ProductResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid product id.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiNotFoundResponse({ description: 'Product not found.' })
   @Delete(':id')
-  delete(@Param('id') id: string) {
-    return this.productService.delete(Number(id));
+  delete(@Param('id', ParseIntPipe) id: number) {
+    return this.productService.delete(id);
   }
 }

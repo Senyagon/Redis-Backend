@@ -1,11 +1,13 @@
 import {
   Injectable,
   UnauthorizedException,
-  BadRequestException,
+  ConflictException,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -21,7 +23,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new BadRequestException('Email already exists');
+      throw new ConflictException('Email already exists');
     }
 
     const hash = await bcrypt.hash(password, 10);
@@ -93,8 +95,71 @@ export class AuthService {
     return tokens;
   }
 
+  async logout(userId: number) {
+    await this.ensureUserExists(userId);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { refreshToken: null },
+    });
+
+    return { message: 'Logged out successfully' };
+  }
+
+  async me(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
+  }
+
+  async changePassword(
+    userId: number,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const validPassword = await bcrypt.compare(currentPassword, user.password);
+    if (!validPassword) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const password = await bcrypt.hash(newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        password,
+        refreshToken: null,
+      },
+    });
+
+    return {
+      message:
+        'Password changed successfully. Please log in again on all devices.',
+    };
+  }
+
   // ⚙ Генерация токенов
-  private async generateTokens(user: any) {
+  private async generateTokens(user: Pick<User, 'id' | 'email' | 'role'>) {
     const payload = {
       sub: user.id,
       email: user.email,
@@ -113,5 +178,18 @@ export class AuthService {
       access_token,
       refresh_token,
     };
+  }
+
+  private async ensureUserExists(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
   }
 }
