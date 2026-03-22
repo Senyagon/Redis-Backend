@@ -24,7 +24,7 @@ Then install and setup PostgreSQL & add it to .env
 ### 1. Клонирование репозитория
 
 ```bash
-git clone <URL_ВАШЕГО_РЕПОЗИТОРИЯ>
+git clone https://github.com/Senyagon/Redis-Backend/edit/main/README.md
 cd Redis-Backend
 ```
 
