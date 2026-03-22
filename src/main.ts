@@ -22,7 +22,7 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle('Redis API')
     .setDescription(
-      'E-commerce backend API with authentication, products, categories and image uploads.',
+      'E-commerce backend API',
     )
     .setVersion('1.0')
     .addBearerAuth(
