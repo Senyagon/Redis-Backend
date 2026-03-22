@@ -24,7 +24,7 @@ Then install and setup PostgreSQL & add it to .env
 ### 1. Клонирование репозитория
 
 ```bash
-git clone https://github.com/Senyagon/Redis-Backend/edit/main/README.md
+git clone https://github.com/Senyagon/Redis-Backend
 cd Redis-Backend
 ```
 
@@ -171,7 +171,7 @@ PORT=3001
 ## Первый запуск с нуля в одной последовательности
 
 ```bash
-git clone https://github.com/Senyagon/Redis-Backend/edit/main/README.md
+git clone https://github.com/Senyagon/Redis-Backend
 cd Redis-Backend
 yarn install
 cp .env.example .env
