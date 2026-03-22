@@ -17,6 +17,7 @@ node -v
 yarn -v
 psql --version
 ```
+Then install and setup PostgreSQL & add it to .env
 
 ## Настройка проекта после скачивания с GitHub
 
