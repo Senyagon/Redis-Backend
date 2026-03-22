@@ -171,7 +171,7 @@ PORT=3001
 ## Первый запуск с нуля в одной последовательности
 
 ```bash
-git clone <URL_ВАШЕГО_РЕПОЗИТОРИЯ>
+git clone https://github.com/Senyagon/Redis-Backend/edit/main/README.md
 cd Redis-Backend
 yarn install
 cp .env.example .env
