@@ -1,105 +1,182 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Redis-Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend API на `NestJS` + `Prisma` для каталога товаров, категорий и авторизации пользователей.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Важно: несмотря на название репозитория, проект сейчас работает с `PostgreSQL`, а не с Redis.
 
-## Description
+## Что нужно перед запуском
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- `Node.js` 20+
+- `Yarn` 1.x
+- `PostgreSQL` 14+
 
-## Project setup
+Проверить версии можно так:
 
 ```bash
-$ yarn install
+node -v
+yarn -v
+psql --version
 ```
 
-## Compile and run the project
+## Настройка проекта после скачивания с GitHub
+
+### 1. Клонирование репозитория
 
 ```bash
-# development
-$ yarn run start
-
-# watch mode
-$ yarn run start:dev
-
-# production mode
-$ yarn run start:prod
+git clone <URL_ВАШЕГО_РЕПОЗИТОРИЯ>
+cd Redis-Backend
 ```
 
-## View database
+### 2. Установка зависимостей
+
+```bash
+yarn install
+```
+
+### 3. Создание файла окружения
+
+Скопируйте шаблон:
+
+```bash
+cp .env.example .env
+```
+
+Если вы на Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Заполните переменные в `.env`:
+
+```env
+DATABASE_URL="postgresql://postgres:password@localhost:5432/redis_catalog"
+JWT_SECRET="your-very-strong-secret"
+JWT_EXPIRES_IN=3600s
+PORT=3000
+```
+
+### 4. Создание базы данных PostgreSQL
+
+Создайте базу данных, имя которой указано в `DATABASE_URL`.
+
+Пример для `psql`:
+
+```sql
+CREATE DATABASE redis_catalog;
+```
+
+### 5. Применение миграций Prisma
+
+После создания базы выполните:
+
+```bash
+npx prisma migrate deploy
+npx prisma generate
+```
+
+Если вы разрабатываете локально и хотите, чтобы Prisma сама создавала новые миграции при изменении схемы, можно использовать:
+
+```bash
+npx prisma migrate dev
+```
+
+### 6. Запуск проекта
+
+Режим разработки:
+
+```bash
+yarn start:dev
+```
+
+Обычный запуск:
+
+```bash
+yarn start
+```
+
+Продакшен-запуск:
+
+```bash
+yarn build
+yarn start:prod
+```
+
+## Где открыть проект после запуска
+
+- API: [http://localhost:3000](http://localhost:3000)
+- Swagger-документация: [http://localhost:3000/api](http://localhost:3000/api)
+- Статические файлы из папки `uploads`: [http://localhost:3000/uploads](http://localhost:3000/uploads)
+
+Если у вас изменён `PORT`, используйте свой порт из `.env`.
+
+## Полезные команды
 
 ```bash
 # Prisma Studio
-$ npx prisma studio
+npx prisma studio
+
+# линтер
+yarn lint
+
+# форматирование
+yarn format
+
+# unit-тесты
+yarn test
+
+# e2e-тесты
+yarn test:e2e
+
+# покрытие
+yarn test:cov
 ```
 
-## Run tests
+## Что делать, если проект не стартует
+
+### Ошибка подключения к базе
+
+Проверьте:
+
+- запущен ли `PostgreSQL`
+- существует ли база `redis_catalog`
+- правильные ли логин, пароль, порт и имя базы в `DATABASE_URL`
+
+### Ошибка Prisma Client
+
+Перегенерируйте Prisma Client:
 
 ```bash
-# unit tests
-$ yarn run test
-
-# e2e tests
-$ yarn run test:e2e
-
-# test coverage
-$ yarn run test:cov
+npx prisma generate
 ```
 
-## Deployment
+### Порт уже занят
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Измените `PORT` в `.env`, например:
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+```env
+PORT=3001
+```
+
+## Структура проекта
+
+- `src/auth` - авторизация и JWT
+- `src/category` - категории товаров
+- `src/product` - товары и загрузка изображений
+- `src/prisma` - подключение Prisma к PostgreSQL
+- `prisma/schema.prisma` - схема базы данных
+- `prisma/migrations` - миграции базы данных
+
+## Первый запуск с нуля в одной последовательности
 
 ```bash
-$ yarn install -g @nestjs/mau
-$ mau deploy
+git clone <URL_ВАШЕГО_РЕПОЗИТОРИЯ>
+cd Redis-Backend
+yarn install
+cp .env.example .env
+npx prisma migrate deploy
+npx prisma generate
+yarn start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+После этого откройте Swagger: [http://localhost:3000/api](http://localhost:3000/api)
