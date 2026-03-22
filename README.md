@@ -30,6 +30,7 @@
 ```bash
 $ yarn install
 ```
+Then install and setup PostgreSQL & add it to .env
 
 ## Compile and run the project
 
