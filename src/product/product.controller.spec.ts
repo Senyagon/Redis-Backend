@@ -14,6 +14,9 @@ describe('ProductController', () => {
           useValue: {
             create: jest.fn(),
             findAll: jest.fn(),
+            searchByName: jest.fn(),
+            fuzzySearchByName: jest.fn(),
+            getSearchSuggestions: jest.fn(),
             findLatest: jest.fn(),
             findBySlug: jest.fn(),
             findRelated: jest.fn(),
