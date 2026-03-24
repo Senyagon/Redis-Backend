@@ -17,6 +17,7 @@ describe('AuthController', () => {
             refresh: jest.fn(),
             me: jest.fn(),
             logout: jest.fn(),
+            deleteUser: jest.fn(),
             changePassword: jest.fn(),
           },
         },
@@ -29,4 +30,16 @@ describe('AuthController', () => {
   it('should be defined', () => {
     expect(controller).toBeDefined();
   });
+
+  it('delegates deleteMe to authService.deleteUser', () => {
+    const authService = moduleRefAuthService(controller);
+    controller.deleteMe({ id: 7 });
+
+    expect(authService.deleteUser).toHaveBeenCalledWith(7);
+  });
 });
+
+function moduleRefAuthService(controller: AuthController): jest.Mocked<AuthService> {
+  return (controller as unknown as { authService: jest.Mocked<AuthService> })
+    .authService;
+}

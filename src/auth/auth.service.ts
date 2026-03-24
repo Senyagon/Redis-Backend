@@ -106,6 +106,16 @@ export class AuthService {
     return { message: 'Logged out successfully' };
   }
 
+  async deleteUser(userId: number) {
+    await this.ensureUserExists(userId);
+
+    await this.prisma.user.delete({
+      where: { id: userId },
+    });
+
+    return { message: 'User deleted successfully' };
+  }
+
   async me(userId: number) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
