@@ -14,6 +14,7 @@ import {
   ParseIntPipe,
   HttpCode,
 } from '@nestjs/common';
+import { unlink } from 'fs/promises';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -22,7 +23,6 @@ import {
   ApiTags,
   ApiBearerAuth,
   ApiOperation,
-  ApiResponse,
   ApiConsumes,
   ApiBody,
   ApiQuery,
@@ -40,7 +40,6 @@ import { extname } from 'path';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductResponseDto } from './dto/product-response.dto';
 import { PaginatedProductsResponseDto } from './dto/paginated-products-response.dto';
-import { ImageUploadResponseDto } from './dto/image-upload-response.dto';
 import { ProductSearchSuggestionDto } from './dto/product-search-suggestion.dto';
 
 const productImageInterceptor = FileInterceptor('file', {
@@ -67,63 +66,74 @@ const productImageInterceptor = FileInterceptor('file', {
 export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
-  // 🖼 Upload image
+  // ➕ Create product
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Upload product image' })
+  @ApiOperation({ summary: 'Create a new product with an optional image upload' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
+    description:
+      'Create a product. If an image file is provided, it is uploaded and linked to the new product automatically.',
     schema: {
       type: 'object',
       properties: {
+        name: {
+          type: 'string',
+          example: 'Tomato Seeds',
+        },
+        slug: {
+          type: 'string',
+          example: 'tomato-seeds',
+        },
+        price: {
+          type: 'integer',
+          example: 100,
+        },
+        categoryId: {
+          type: 'integer',
+          example: 1,
+        },
+        description: {
+          type: 'string',
+          example: 'Best seeds for your garden',
+        },
         file: {
           type: 'string',
           format: 'binary',
         },
       },
-      required: ['file'],
+      required: ['name', 'slug', 'price', 'categoryId'],
     },
   })
-  @ApiCreatedResponse({
-    description: 'Image uploaded successfully.',
-    type: ImageUploadResponseDto,
-  })
-  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
-  @ApiBadRequestResponse({
-    description: 'Invalid file type or file too large.',
-  })
-  @Post('upload')
-  @UseInterceptors(productImageInterceptor)
-  uploadFile(@UploadedFile() file: Express.Multer.File) {
-    if (!file) {
-      throw new BadRequestException('Image file is required');
-    }
-
-    return {
-      imageUrl: `/uploads/${file.filename}`,
-    };
-  }
-
-  // ➕ Create product
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create a new product' })
   @ApiCreatedResponse({
     description: 'Product created successfully.',
     type: ProductResponseDto,
   })
   @ApiBadRequestResponse({
-    description: 'Validation failed or categoryId is invalid.',
+    description: 'Validation failed, invalid categoryId, or invalid image file.',
   })
   @ApiConflictResponse({ description: 'Product slug already exists.' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @Post()
+  @UseInterceptors(productImageInterceptor)
   create(
     @Body() dto: CreateProductDto,
+    @UploadedFile() file: Express.Multer.File | undefined,
     @GetUser() user: { id: number; email: string; role: string },
   ) {
     void user;
-    return this.productService.create(dto);
+    const createDto: CreateProductDto = {
+      ...dto,
+      image: file ? `/uploads/${file.filename}` : dto.image,
+    };
+
+    return this.productService.create(createDto).catch(async (error: unknown) => {
+      if (file) {
+        await this.deleteUploadedFile(file.path);
+      }
+
+      throw error;
+    });
   }
 
   // 📦 Get all products (pagination)
@@ -386,5 +396,15 @@ export class ProductController {
   @Delete(':id')
   delete(@Param('id', ParseIntPipe) id: number) {
     return this.productService.delete(id);
+  }
+
+  private async deleteUploadedFile(filePath: string) {
+    try {
+      await unlink(filePath);
+    } catch (error: any) {
+      if (error?.code !== 'ENOENT') {
+        throw error;
+      }
+    }
   }
 }

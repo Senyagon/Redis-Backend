@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import { IsInt, IsString, Min, IsOptional } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -11,11 +12,13 @@ export class CreateProductDto {
   slug: string;
 
   @ApiProperty({ example: 100 })
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   price: number;
 
   @ApiProperty({ example: 1 })
+  @Type(() => Number)
   @IsInt()
   categoryId: number;
 
