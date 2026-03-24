@@ -24,7 +24,7 @@ async function bootstrap() {
     .setDescription(
       'E-commerce backend API',
     )
-    .setVersion('1.0')
+    .setVersion('1.2.0')
     .addBearerAuth(
       {
         type: 'http',
