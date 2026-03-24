@@ -25,6 +25,7 @@ import {
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { TokensResponseDto } from './dto/tokens-response.dto';
 import { UserProfileDto } from './dto/user-profile.dto';
 import { MessageResponseDto } from './dto/message-response.dto';
@@ -47,7 +48,7 @@ export class AuthController {
   @ApiConflictResponse({ description: 'Email already exists.' })
   @Post('register')
   register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto.email, dto.password);
+    return this.authService.register(dto);
   }
 
   @ApiOperation({ summary: 'Login using email and password' })
@@ -123,8 +124,59 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update current authenticated user profile' })
+  @ApiBody({
+    type: UpdateProfileDto,
+    description:
+      'Update one or more profile fields. Only the fields included in the request body will be changed.',
+    examples: {
+      updateContactInfo: {
+        summary: 'Update contact details',
+        value: {
+          phoneNumber: '+15551234567',
+          address: '221B Baker Street, London',
+        },
+      },
+      updateNames: {
+        summary: 'Update first and second name',
+        value: {
+          firstName: 'John',
+          secondName: 'Doe',
+        },
+      },
+    },
+  })
+  @ApiOkResponse({
+    description: 'Current user profile updated successfully.',
+    type: UserProfileDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid profile field format.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiNotFoundResponse({ description: 'User not found.' })
+  @Patch('me')
+  updateProfile(
+    @GetUser() user: { id: number },
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.authService.updateProfile(user.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Change password for current authenticated user' })
-  @ApiBody({ type: ChangePasswordDto })
+  @ApiBody({
+    type: ChangePasswordDto,
+    description: 'Provide the current password and a new password to replace it.',
+    examples: {
+      changePassword: {
+        summary: 'Change account password',
+        value: {
+          currentPassword: 'oldStrongPassword123',
+          newPassword: 'newStrongPassword456',
+        },
+      },
+    },
+  })
   @ApiOkResponse({
     description: 'Password changed and refresh token invalidated.',
     type: MessageResponseDto,

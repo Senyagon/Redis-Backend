@@ -8,6 +8,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User } from '@prisma/client';
+import { RegisterDto } from './dto/register.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class AuthService {
@@ -17,7 +19,9 @@ export class AuthService {
   ) {}
 
   // 🟢 Регистрация
-  async register(email: string, password: string) {
+  async register(dto: RegisterDto) {
+    const { email, password, firstName, secondName, phoneNumber, address } = dto;
+
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });
@@ -32,6 +36,10 @@ export class AuthService {
       data: {
         email,
         password: hash,
+        firstName,
+        secondName,
+        phoneNumber,
+        address,
         role: 'USER',
       },
     });
@@ -122,6 +130,10 @@ export class AuthService {
       select: {
         id: true,
         email: true,
+        firstName: true,
+        secondName: true,
+        phoneNumber: true,
+        address: true,
         role: true,
         createdAt: true,
       },
@@ -132,6 +144,25 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  async updateProfile(userId: number, dto: UpdateProfileDto) {
+    await this.ensureUserExists(userId);
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: dto,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        secondName: true,
+        phoneNumber: true,
+        address: true,
+        role: true,
+        createdAt: true,
+      },
+    });
   }
 
   async changePassword(

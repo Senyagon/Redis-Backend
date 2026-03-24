@@ -18,6 +18,7 @@ describe('AuthController', () => {
             me: jest.fn(),
             logout: jest.fn(),
             deleteUser: jest.fn(),
+            updateProfile: jest.fn(),
             changePassword: jest.fn(),
           },
         },
@@ -36,6 +37,36 @@ describe('AuthController', () => {
     controller.deleteMe({ id: 7 });
 
     expect(authService.deleteUser).toHaveBeenCalledWith(7);
+  });
+
+  it('delegates register to authService.register with the full dto', () => {
+    const authService = moduleRefAuthService(controller);
+    const dto = {
+      email: 'user@example.com',
+      password: 'strongPassword123',
+      firstName: 'John',
+      secondName: 'Doe',
+      phoneNumber: '+15551234567',
+      address: '221B Baker Street, London',
+    };
+
+    controller.register(dto);
+
+    expect(authService.register).toHaveBeenCalledWith(dto);
+  });
+
+  it('delegates updateProfile to authService.updateProfile', () => {
+    const authService = moduleRefAuthService(controller);
+    const dto = {
+      firstName: 'John',
+      secondName: 'Doe',
+      phoneNumber: '+15551234567',
+      address: '221B Baker Street, London',
+    };
+
+    controller.updateProfile({ id: 9 }, dto);
+
+    expect(authService.updateProfile).toHaveBeenCalledWith(9, dto);
   });
 });
 

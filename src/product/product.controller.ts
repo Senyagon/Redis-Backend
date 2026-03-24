@@ -199,6 +199,32 @@ export class ProductController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update product by ID' })
+  @ApiParam({ name: 'id', example: 1, description: 'Product ID to update.' })
+  @ApiBody({
+    type: UpdateProductDto,
+    description:
+      'Update one or more product fields. Only the fields included in the request body will be changed.',
+    examples: {
+      updatePriceAndDescription: {
+        summary: 'Update product price and description',
+        value: {
+          price: 150,
+          description: 'Improved seed mix for spring planting',
+        },
+      },
+      fullProductPatch: {
+        summary: 'Update several product fields',
+        value: {
+          name: 'Tomato Seeds Premium',
+          slug: 'tomato-seeds-premium',
+          price: 180,
+          categoryId: 2,
+          description: 'Premium tomato seeds with high germination rate',
+          image: '/uploads/tomato-seeds-premium.webp',
+        },
+      },
+    },
+  })
   @ApiOkResponse({
     description: 'Product updated successfully.',
     type: ProductResponseDto,

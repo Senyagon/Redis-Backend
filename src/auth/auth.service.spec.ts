@@ -63,4 +63,94 @@ describe('AuthService', () => {
       where: { id: 5 },
     });
   });
+
+  it('updates an existing user profile', async () => {
+    prisma.user.findUnique.mockResolvedValue({ id: 7 });
+    prisma.user.update.mockResolvedValue({
+      id: 7,
+      email: 'user@example.com',
+      firstName: 'John',
+      secondName: 'Doe',
+      phoneNumber: '+15551234567',
+      address: '221B Baker Street, London',
+      role: 'USER',
+      createdAt: new Date('2026-03-24T12:00:00.000Z'),
+    });
+
+    await expect(
+      service.updateProfile(7, {
+        firstName: 'John',
+        secondName: 'Doe',
+        phoneNumber: '+15551234567',
+        address: '221B Baker Street, London',
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: 7,
+        firstName: 'John',
+        secondName: 'Doe',
+      }),
+    );
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 7 },
+      data: {
+        firstName: 'John',
+        secondName: 'Doe',
+        phoneNumber: '+15551234567',
+        address: '221B Baker Street, London',
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        secondName: true,
+        phoneNumber: true,
+        address: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+  });
+
+  it('creates a user with profile fields during registration', async () => {
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.create.mockResolvedValue({
+      id: 11,
+      email: 'user@example.com',
+      role: 'USER',
+    });
+    prisma.user.update.mockResolvedValue({});
+    const signAsync = (
+      (service as unknown as { jwt: { signAsync: jest.Mock } }).jwt.signAsync
+    );
+    signAsync.mockResolvedValueOnce('access-token').mockResolvedValueOnce(
+      'refresh-token',
+    );
+
+    await expect(
+      service.register({
+        email: 'user@example.com',
+        password: 'strongPassword123',
+        firstName: 'John',
+        secondName: 'Doe',
+        phoneNumber: '+15551234567',
+        address: '221B Baker Street, London',
+      }),
+    ).resolves.toEqual({
+      access_token: 'access-token',
+      refresh_token: 'refresh-token',
+    });
+
+    expect(prisma.user.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        email: 'user@example.com',
+        firstName: 'John',
+        secondName: 'Doe',
+        phoneNumber: '+15551234567',
+        address: '221B Baker Street, London',
+        role: 'USER',
+      }),
+    });
+  });
 });
