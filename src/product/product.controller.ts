@@ -41,6 +41,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductResponseDto } from './dto/product-response.dto';
 import { PaginatedProductsResponseDto } from './dto/paginated-products-response.dto';
 import { ImageUploadResponseDto } from './dto/image-upload-response.dto';
+import { ProductSearchSuggestionDto } from './dto/product-search-suggestion.dto';
 
 const productImageInterceptor = FileInterceptor('file', {
   storage: diskStorage({
@@ -140,6 +141,80 @@ export class ProductController {
     @Query('limit') limit = 10,
   ) {
     return this.productService.findAll(Number(page), Number(limit));
+  }
+
+  @ApiOperation({ summary: 'Search products by name' })
+  @ApiOkResponse({
+    description: 'Products matching the name query returned.',
+    type: ProductResponseDto,
+    isArray: true,
+  })
+  @ApiQuery({
+    name: 'name',
+    required: true,
+    example: 'Tomato Seeds',
+    description: 'Product name or part of the product name.',
+  })
+  @ApiQuery({ name: 'limit', required: false, example: 10 })
+  @ApiBadRequestResponse({
+    description: 'Product name query is required or limit value is invalid.',
+  })
+  @Get('search')
+  searchByName(
+    @Query('name') name: string,
+    @Query('limit') limit = 10,
+  ) {
+    return this.productService.searchByName(name, Number(limit));
+  }
+
+  @ApiOperation({
+    summary: 'Search products by name with typo tolerance using bigrams',
+  })
+  @ApiOkResponse({
+    description: 'Products matching the fuzzy name query returned.',
+    type: ProductResponseDto,
+    isArray: true,
+  })
+  @ApiQuery({
+    name: 'name',
+    required: true,
+    example: 'Tomato Seds',
+    description: 'Product name query with possible typo.',
+  })
+  @ApiQuery({ name: 'limit', required: false, example: 10 })
+  @ApiBadRequestResponse({
+    description: 'Product name query is required or limit value is invalid.',
+  })
+  @Get('search/fuzzy')
+  fuzzySearchByName(
+    @Query('name') name: string,
+    @Query('limit') limit = 10,
+  ) {
+    return this.productService.fuzzySearchByName(name, Number(limit));
+  }
+
+  @ApiOperation({ summary: 'Get product search suggestions for autocomplete' })
+  @ApiOkResponse({
+    description: 'Autocomplete suggestions returned.',
+    type: ProductSearchSuggestionDto,
+    isArray: true,
+  })
+  @ApiQuery({
+    name: 'query',
+    required: true,
+    example: 'Tom',
+    description: 'Part of the product name for autocomplete.',
+  })
+  @ApiQuery({ name: 'limit', required: false, example: 5 })
+  @ApiBadRequestResponse({
+    description: 'Autocomplete query is required or limit value is invalid.',
+  })
+  @Get('search/suggestions')
+  getSearchSuggestions(
+    @Query('query') query: string,
+    @Query('limit') limit = 5,
+  ) {
+    return this.productService.getSearchSuggestions(query, Number(limit));
   }
 
   @ApiOperation({ summary: 'Retrieve latest products' })

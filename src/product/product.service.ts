@@ -64,6 +64,99 @@ export class ProductService {
     });
   }
 
+  async searchByName(name: string, limit = 10) {
+    const normalizedName = name.trim();
+
+    if (!normalizedName) {
+      throw new BadRequestException('Product name query is required');
+    }
+
+    return this.prisma.product.findMany({
+      where: {
+        name: {
+          contains: normalizedName,
+          mode: 'insensitive',
+        },
+      },
+      take: limit,
+      include: { category: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async fuzzySearchByName(name: string, limit = 10) {
+    const normalizedName = this.normalizeSearchText(name);
+
+    if (!normalizedName) {
+      throw new BadRequestException('Product name query is required');
+    }
+
+    const products = await this.prisma.product.findMany({
+      include: { category: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return products
+      .map((product) => ({
+        product,
+        score: this.calculateBigramSimilarity(
+          normalizedName,
+          this.normalizeSearchText(product.name),
+        ),
+      }))
+      .filter(({ score, product }) => {
+        const normalizedProductName = this.normalizeSearchText(product.name);
+
+        return (
+          normalizedProductName.includes(normalizedName) ||
+          score >= 0.25
+        );
+      })
+      .sort((left, right) => right.score - left.score)
+      .slice(0, limit)
+      .map(({ product }) => product);
+  }
+
+  async getSearchSuggestions(query: string, limit = 5) {
+    const normalizedQuery = this.normalizeSearchText(query);
+
+    if (!normalizedQuery) {
+      throw new BadRequestException('Autocomplete query is required');
+    }
+
+    const products = await this.prisma.product.findMany({
+      where: {
+        name: {
+          contains: normalizedQuery,
+          mode: 'insensitive',
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        image: true,
+      },
+      take: limit * 3,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return products
+      .sort((left, right) => {
+        const leftName = this.normalizeSearchText(left.name);
+        const rightName = this.normalizeSearchText(right.name);
+        const leftStartsWith = leftName.startsWith(normalizedQuery) ? 1 : 0;
+        const rightStartsWith = rightName.startsWith(normalizedQuery) ? 1 : 0;
+
+        if (leftStartsWith !== rightStartsWith) {
+          return rightStartsWith - leftStartsWith;
+        }
+
+        return leftName.localeCompare(rightName);
+      })
+      .slice(0, limit);
+  }
+
   // 🔍 Get one product
   async findOne(id: number) {
     const product = await this.prisma.product.findUnique({
@@ -233,5 +326,59 @@ export class ProductService {
         throw error;
       }
     }
+  }
+
+  private normalizeSearchText(value: string) {
+    return value.trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  private calculateBigramSimilarity(left: string, right: string) {
+    if (!left || !right) {
+      return 0;
+    }
+
+    if (left === right) {
+      return 1;
+    }
+
+    const leftBigrams = this.buildBigrams(left);
+    const rightBigrams = this.buildBigrams(right);
+
+    if (leftBigrams.length === 0 || rightBigrams.length === 0) {
+      return 0;
+    }
+
+    const rightCounts = new Map<string, number>();
+
+    for (const bigram of rightBigrams) {
+      rightCounts.set(bigram, (rightCounts.get(bigram) ?? 0) + 1);
+    }
+
+    let intersection = 0;
+
+    for (const bigram of leftBigrams) {
+      const count = rightCounts.get(bigram) ?? 0;
+
+      if (count > 0) {
+        intersection += 1;
+        rightCounts.set(bigram, count - 1);
+      }
+    }
+
+    return (2 * intersection) / (leftBigrams.length + rightBigrams.length);
+  }
+
+  private buildBigrams(value: string) {
+    if (value.length < 2) {
+      return [value];
+    }
+
+    const bigrams: string[] = [];
+
+    for (let index = 0; index < value.length - 1; index += 1) {
+      bigrams.push(value.slice(index, index + 2));
+    }
+
+    return bigrams;
   }
 }
