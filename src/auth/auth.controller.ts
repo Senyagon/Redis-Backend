@@ -4,6 +4,7 @@ import {
   Body,
   Get,
   Patch,
+  Delete,
   UseGuards,
   HttpCode,
 } from '@nestjs/common';
@@ -103,6 +104,21 @@ export class AuthController {
   @Post('logout')
   logout(@GetUser() user: { id: number }) {
     return this.authService.logout(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete current authenticated user account' })
+  @ApiOkResponse({
+    description: 'User account deleted successfully.',
+    type: MessageResponseDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiNotFoundResponse({ description: 'User not found.' })
+  @HttpCode(200)
+  @Delete('me')
+  deleteMe(@GetUser() user: { id: number }) {
+    return this.authService.deleteUser(user.id);
   }
 
   @UseGuards(JwtAuthGuard)
