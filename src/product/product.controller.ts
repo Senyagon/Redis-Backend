@@ -123,7 +123,11 @@ export class ProductController {
   ) {
     void user;
     const createDto: CreateProductDto = {
-      ...dto,
+      name: dto.name,
+      slug: dto.slug,
+      price: dto.price,
+      categoryId: dto.categoryId,
+      description: dto.description,
       image: file ? `/uploads/${file.filename}` : dto.image,
     };
 
