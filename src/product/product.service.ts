@@ -65,13 +65,13 @@ export class ProductService {
   }
 
   async searchByName(name: string, limit = 10) {
-    const normalizedName = name.trim();
+    const normalizedName = this.normalizeSearchText(name);
 
     if (!normalizedName) {
       throw new BadRequestException('Product name query is required');
     }
 
-    return this.prisma.product.findMany({
+    const directMatches = await this.prisma.product.findMany({
       where: {
         name: {
           contains: normalizedName,
@@ -82,15 +82,28 @@ export class ProductService {
       include: { category: true },
       orderBy: { createdAt: 'desc' },
     });
-  }
 
-  async fuzzySearchByName(name: string, limit = 10) {
-    const normalizedName = this.normalizeSearchText(name);
-
-    if (!normalizedName) {
-      throw new BadRequestException('Product name query is required');
+    if (directMatches.length >= limit) {
+      return directMatches.slice(0, limit);
     }
 
+    const fuzzyMatches = await this.findFuzzyMatches(normalizedName, limit);
+    const combinedResults = new Map<number, (typeof directMatches)[number]>();
+
+    for (const product of directMatches) {
+      combinedResults.set(product.id, product);
+    }
+
+    for (const product of fuzzyMatches) {
+      if (!combinedResults.has(product.id)) {
+        combinedResults.set(product.id, product);
+      }
+    }
+
+    return Array.from(combinedResults.values()).slice(0, limit);
+  }
+
+  private async findFuzzyMatches(name: string, limit: number) {
     const products = await this.prisma.product.findMany({
       include: { category: true },
       orderBy: { createdAt: 'desc' },
@@ -100,7 +113,7 @@ export class ProductService {
       .map((product) => ({
         product,
         score: this.calculateBigramSimilarity(
-          normalizedName,
+          name,
           this.normalizeSearchText(product.name),
         ),
       }))
@@ -108,7 +121,7 @@ export class ProductService {
         const normalizedProductName = this.normalizeSearchText(product.name);
 
         return (
-          normalizedProductName.includes(normalizedName) ||
+          normalizedProductName.includes(name) ||
           score >= 0.25
         );
       })

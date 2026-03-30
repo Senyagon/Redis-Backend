@@ -145,7 +145,8 @@ export class ProductController {
 
   @ApiOperation({ summary: 'Search products by name' })
   @ApiOkResponse({
-    description: 'Products matching the name query returned.',
+    description:
+      'Products returned using direct name match first, then typo-tolerant fuzzy match.',
     type: ProductResponseDto,
     isArray: true,
   })
@@ -165,32 +166,6 @@ export class ProductController {
     @Query('limit') limit = 10,
   ) {
     return this.productService.searchByName(name, Number(limit));
-  }
-
-  @ApiOperation({
-    summary: 'Search products by name with typo tolerance using bigrams',
-  })
-  @ApiOkResponse({
-    description: 'Products matching the fuzzy name query returned.',
-    type: ProductResponseDto,
-    isArray: true,
-  })
-  @ApiQuery({
-    name: 'name',
-    required: true,
-    example: 'Tomato Seds',
-    description: 'Product name query with possible typo.',
-  })
-  @ApiQuery({ name: 'limit', required: false, example: 10 })
-  @ApiBadRequestResponse({
-    description: 'Product name query is required or limit value is invalid.',
-  })
-  @Get('search/fuzzy')
-  fuzzySearchByName(
-    @Query('name') name: string,
-    @Query('limit') limit = 10,
-  ) {
-    return this.productService.fuzzySearchByName(name, Number(limit));
   }
 
   @ApiOperation({ summary: 'Get product search suggestions for autocomplete' })

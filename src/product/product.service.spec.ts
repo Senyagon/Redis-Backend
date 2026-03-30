@@ -38,12 +38,6 @@ describe('ProductService', () => {
     );
   });
 
-  it('should throw when fuzzy search query is empty', async () => {
-    await expect(service.fuzzySearchByName('   ')).rejects.toThrow(
-      'Product name query is required',
-    );
-  });
-
   it('should throw when autocomplete query is empty', async () => {
     await expect(service.getSearchSuggestions('   ')).rejects.toThrow(
       'Autocomplete query is required',
