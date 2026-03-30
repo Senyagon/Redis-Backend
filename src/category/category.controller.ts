@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBody,
   ApiBearerAuth,
   ApiBadRequestResponse,
   ApiConflictResponse,
@@ -94,6 +95,27 @@ export class CategoryController {
   @Roles(Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update category by ID (admin only)' })
+  @ApiParam({ name: 'id', example: 1, description: 'Category ID to update.' })
+  @ApiBody({
+    type: UpdateCategoryDto,
+    description:
+      'Update one or more category fields. Only the provided fields will be changed.',
+    examples: {
+      renameCategory: {
+        summary: 'Rename a category',
+        value: {
+          name: 'Vegetable Seeds',
+        },
+      },
+      renameAndReslug: {
+        summary: 'Update category name and slug',
+        value: {
+          name: 'Garden Tools',
+          slug: 'garden-tools',
+        },
+      },
+    },
+  })
   @ApiOkResponse({
     description: 'Category updated successfully.',
     type: CategoryResponseDto,

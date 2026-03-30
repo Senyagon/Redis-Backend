@@ -7,6 +7,18 @@ export class UserProfileDto {
   @ApiProperty({ example: 'user@example.com' })
   email: string;
 
+  @ApiProperty({ example: 'John', required: false, nullable: true })
+  firstName: string | null;
+
+  @ApiProperty({ example: 'Doe', required: false, nullable: true })
+  secondName: string | null;
+
+  @ApiProperty({ example: '+15551234567', required: false, nullable: true })
+  phoneNumber: string | null;
+
+  @ApiProperty({ example: '221B Baker Street, London', required: false, nullable: true })
+  address: string | null;
+
   @ApiProperty({ example: 'USER', enum: ['USER', 'ADMIN'] })
   role: string;
 
