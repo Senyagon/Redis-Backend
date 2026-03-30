@@ -33,14 +33,18 @@ import {
   ApiCreatedResponse,
   ApiUnauthorizedResponse,
   ApiConflictResponse,
+  ApiForbiddenResponse,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { Role } from '@prisma/client';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductResponseDto } from './dto/product-response.dto';
 import { PaginatedProductsResponseDto } from './dto/paginated-products-response.dto';
 import { ProductSearchSuggestionDto } from './dto/product-search-suggestion.dto';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 const productImageInterceptor = FileInterceptor('file', {
   storage: diskStorage({
@@ -67,9 +71,10 @@ export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
   // ➕ Create product
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create a new product with an optional image upload' })
+  @ApiOperation({ summary: 'Create a new product with an optional image upload (admin only)' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     description:
@@ -114,6 +119,7 @@ export class ProductController {
   })
   @ApiConflictResponse({ description: 'Product slug already exists.' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiForbiddenResponse({ description: 'Admin role required.' })
   @Post()
   @UseInterceptors(productImageInterceptor)
   create(
@@ -260,9 +266,10 @@ export class ProductController {
     return this.productService.findOne(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update product by ID' })
+  @ApiOperation({ summary: 'Update product by ID (admin only)' })
   @ApiParam({ name: 'id', example: 1, description: 'Product ID to update.' })
   @ApiBody({
     type: UpdateProductDto,
@@ -298,6 +305,7 @@ export class ProductController {
   })
   @ApiConflictResponse({ description: 'Product slug already exists.' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiForbiddenResponse({ description: 'Admin role required.' })
   @ApiNotFoundResponse({ description: 'Product not found.' })
   @Patch(':id')
   update(
@@ -307,9 +315,10 @@ export class ProductController {
     return this.productService.update(id, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Upload image and attach it to a specific product' })
+  @ApiOperation({ summary: 'Upload image and attach it to a specific product (admin only)' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
@@ -332,6 +341,7 @@ export class ProductController {
     description: 'Invalid file type, file too large, or invalid id.',
   })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiForbiddenResponse({ description: 'Admin role required.' })
   @ApiNotFoundResponse({ description: 'Product not found.' })
   @Post(':id/image')
   @UseInterceptors(productImageInterceptor)
@@ -346,15 +356,17 @@ export class ProductController {
     return this.productService.updateImage(id, `/uploads/${file.filename}`);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Remove image from a specific product' })
+  @ApiOperation({ summary: 'Remove image from a specific product (admin only)' })
   @ApiOkResponse({
     description: 'Product image removed successfully.',
     type: ProductResponseDto,
   })
   @ApiBadRequestResponse({ description: 'Invalid product id.' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiForbiddenResponse({ description: 'Admin role required.' })
   @ApiNotFoundResponse({ description: 'Product not found.' })
   @Delete(':id/image')
   deleteImage(@Param('id', ParseIntPipe) id: number) {
@@ -362,15 +374,17 @@ export class ProductController {
   }
 
   // ❌ Delete product
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Delete product by ID' })
+  @ApiOperation({ summary: 'Delete product by ID (admin only)' })
   @ApiOkResponse({
     description: 'Product deleted successfully.',
     type: ProductResponseDto,
   })
   @ApiBadRequestResponse({ description: 'Invalid product id.' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiForbiddenResponse({ description: 'Admin role required.' })
   @ApiNotFoundResponse({ description: 'Product not found.' })
   @Delete(':id')
   delete(@Param('id', ParseIntPipe) id: number) {
