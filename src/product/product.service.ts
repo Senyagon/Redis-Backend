@@ -35,15 +35,30 @@ export class ProductService {
   }
 
   // 📦 Get all products with pagination
-  async findAll(page = 1, limit = 10) {
+  async findAll(
+    page = 1,
+    limit = 10,
+    filters: { categoryId?: number; categorySlug?: string } = {},
+  ) {
+    const where: Prisma.ProductWhereInput = {};
+
+    if (filters.categoryId) {
+      where.categoryId = filters.categoryId;
+    }
+
+    if (filters.categorySlug) {
+      where.category = { slug: filters.categorySlug };
+    }
+
     const [products, total] = await Promise.all([
       this.prisma.product.findMany({
+        where,
         skip: (page - 1) * limit,
         take: limit,
         include: { category: true },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.product.count(),
+      this.prisma.product.count({ where }),
     ]);
 
     return {

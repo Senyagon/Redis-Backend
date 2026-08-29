@@ -55,6 +55,7 @@ DATABASE_URL="postgresql://postgres:password@localhost:5432/redis_catalog"
 JWT_SECRET="your-very-strong-secret"
 JWT_EXPIRES_IN=3600s
 PORT=3000
+CORS_ORIGIN=http://localhost:5173,http://localhost:5174
 ```
 
 ### 4. Создание базы данных PostgreSQL
@@ -108,6 +109,7 @@ yarn start:prod
 - API: [http://localhost:3000](http://localhost:3000)
 - Swagger-документация: [http://localhost:3000/api](http://localhost:3000/api)
 - Статические файлы из папки `uploads`: [http://localhost:3000/uploads](http://localhost:3000/uploads)
+- Frontend dev server can call the API through `VITE_API_BASE_URL=/api` with the Vite proxy, or directly with `VITE_API_BASE_URL=http://localhost:3000`.
 
 Если у вас изменён `PORT`, используйте свой порт из `.env`.
 
@@ -116,6 +118,9 @@ yarn start:prod
 ```bash
 # Prisma Studio
 npx prisma studio
+
+# seed starter catalog data
+npx ts-node prisma/seed.ts
 
 # линтер
 yarn lint

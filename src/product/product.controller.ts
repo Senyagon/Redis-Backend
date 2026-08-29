@@ -159,8 +159,13 @@ export class ProductController {
   findAll(
     @Query('page') page = 1,
     @Query('limit') limit = 10,
+    @Query('categoryId') categoryId?: string,
+    @Query('categorySlug') categorySlug?: string,
   ) {
-    return this.productService.findAll(Number(page), Number(limit));
+    return this.productService.findAll(Number(page), Number(limit), {
+      categoryId: categoryId ? Number(categoryId) : undefined,
+      categorySlug,
+    });
   }
 
   @ApiOperation({ summary: 'Search products by name' })
